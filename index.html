@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lançamento em Breve</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: 'VT323', monospace;
+      overflow: hidden;
+      color: white;
+      text-shadow: 3px 3px 6px #000000;
+    }
+
+    .container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      height: 100%;
+      text-align: center;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    h1 {
+      font-size: 6vw;
+      margin-bottom: 20px;
+    }
+
+    #countdown {
+      font-size: 12vw;
+      font-weight: bold;
+    }
+
+    #countdown-labels {
+      font-size: 2.5vw;
+      margin-top: 10px;
+    }
+
+    #earlyAccessButton {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 10px 15px;
+      background-color: #1a1a1a;
+      color: white;
+      border: 2px solid white;
+      border-radius: 5px;
+      cursor: pointer;
+      z-index: 100;
+      font-family: 'VT323', monospace;
+      font-size: 16px;
+    }
+
+    #promptOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    #promptContainer {
+      background-color: #111;
+      padding: 40px;
+      border-radius: 10px;
+      border: 2px solid white;
+      text-align: center;
+    }
+
+    #codeInput.error {
+      border-color: #ff4d4d;
+      animation: shake 0.5s;
+    }
+
+    #errorMessagePrompt {
+      color: #ff4d4d;
+      margin-top: 15px;
+      min-height: 20px; /* Reserva espaço para não mover o layout */
+    }
+
+    @keyframes shake {
+      10%, 90% { transform: translate3d(-1px, 0, 0); }
+      20%, 80% { transform: translate3d(2px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+      40%, 60% { transform: translate3d(4px, 0, 0); }
+    }
+
+    #codeInput, #codeSubmit, #closePrompt {
+      font-family: 'VT323', monospace;
+      padding: 10px;
+      font-size: 18px;
+      margin-top: 10px;
+    }
+
+    #postCountdownButton {
+      /* Para centralizar */
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 25px 50px;
+      font-size: 40px;
+      font-family: 'VT323', monospace;
+      color: white;
+      border: 3px solid white;
+      border-radius: 15px;
+      cursor: pointer;
+      text-shadow: 2px 2px 4px #000;
+      animation: animacao-rgb 4s infinite linear;
+      z-index: 2000;
+    }
+
+    #finalMessage {
+      /* Para centralizar */
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 6vw;
+      text-align: center;
+      z-index: 2000;
+    }
+
+    /* --- Glitch Effect --- */
+    .glitch {
+      position: relative;
+      animation: glitch-shake .5s infinite;
+    }
+
+    .glitch::before,
+    .glitch::after {
+      content: attr(data-text); /* Usa o texto do atributo data-text */
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .glitch::before {
+      left: 2px;
+      text-shadow: -2px 0 #ff00c1;
+      animation: glitch-slice-1 .8s infinite linear alternate-reverse;
+    }
+
+    .glitch::after {
+      left: -2px;
+      text-shadow: -2px 0 #00fff9, 2px 2px #ff00c1;
+      animation: glitch-slice-2 .8s infinite linear alternate-reverse;
+    }
+
+    @keyframes glitch-shake { 0% { transform: translate(0, 0) } 25% { transform: translate(5px, -5px) } 50% { transform: translate(-5px, 5px) } 75% { transform: translate(5px, 5px) } 100% { transform: translate(0, 0) } }
+    @keyframes glitch-slice-1 { 0% { clip-path: inset(50% 0 25% 0) } 25% { clip-path: inset(10% 0 55% 0) } 50% { clip-path: inset(80% 0 5% 0) } 75% { clip-path: inset(40% 0 33% 0) } 100% { clip-path: inset(50% 0 25% 0) } }
+    @keyframes glitch-slice-2 { 0% { clip-path: inset(5% 0 80% 0) } 25% { clip-path: inset(60% 0 10% 0) } 50% { clip-path: inset(30% 0 45% 0) } 75% { clip-path: inset(10% 0 70% 0) } 100% { clip-path: inset(5% 0 80% 0) } }
+    /* --- End Glitch Effect --- */
+
+    /* Define o cursor, mas o mantém invisível por padrão */
+    #finalMessage::after {
+      content: '_';
+      margin-left: 5px;
+      font-weight: bold;
+      opacity: 0;
+    }
+
+    /* Animação de piscar durante a digitação */
+    #finalMessage.typing::after {
+      animation: blink-caret .75s step-end infinite;
+    }
+
+    /* Animação de fade-out quando a digitação termina */
+    #finalMessage.typing-done::after {
+      animation: fade-out-caret 0.5s forwards;
+    }
+
+    @keyframes blink-caret {
+      from, to { opacity: 0 }
+      50% { opacity: 1 }
+    }
+
+    @keyframes fade-out-caret {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @keyframes animacao-rgb {
+      0%   { background-color: hsl(0, 100%, 50%); }
+      16%  { background-color: hsl(60, 100%, 50%); }
+      33%  { background-color: hsl(120, 100%, 50%); }
+      50%  { background-color: hsl(180, 100%, 50%); }
+      66%  { background-color: hsl(240, 100%, 50%); }
+      83%  { background-color: hsl(300, 100%, 50%); }
+      100% { background-color: hsl(0, 100%, 50%); }
+    }
+
+    .rgb-background {
+      animation: animacao-rgb 10s infinite linear;
+    }
+  </style>
+</head>
+<body class="rgb-background">
+
+  <div class="container">
+    <h1>O site vai lançar em:</h1>
+    <div id="countdown"></div>
+    <div id="countdown-labels">Minutos : Segundos</div>
+  </div>
+
+  <!-- Elementos para o final do countdown -->
+  <button id="postCountdownButton" class="hidden">?</button>
+  <h1 id="finalMessage" class="hidden">PROXIMOS MINIGAMES EM BREVE :)</h1>
+
+  <button id="earlyAccessButton">Acesso Antecipado</button>
+
+  <div id="promptOverlay" class="hidden">
+    <div id="promptContainer">
+      <h2>Acesso Antecipado</h2>
+      <p>Insira o código:</p>
+      <input type="text" id="codeInput" autocomplete="off">
+      <p id="errorMessagePrompt"></p>
+      <br>
+      <button id="codeSubmit">Entrar</button>
+      <button id="closePrompt">Fechar</button>
+    </div>
+  </div>
+
+  <script>
+    // Elementos para o final do countdown
+    const postCountdownButton = document.getElementById('postCountdownButton');
+    const finalMessage = document.getElementById('finalMessage');
+    let countdownInterval; // Variável para o intervalo do contador
+
+    function triggerEndScreen() {
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+      }
+      // Esconde os elementos atuais
+      document.querySelector('.container').classList.add('hidden');
+      document.getElementById('earlyAccessButton').classList.add('hidden');
+      document.getElementById('promptOverlay').classList.add('hidden');
+
+      // Configura a tela branca
+      const body = document.body;
+      body.className = '';
+      body.style.backgroundColor = 'white';
+
+      // Mostra o botão RGB
+      postCountdownButton.classList.remove('hidden');
+    }
+
+    function typeWriter(element, text, speed) {
+      let i = 0;
+      element.innerHTML = ''; // Limpa o conteúdo inicial
+      element.classList.remove('hidden'); // Garante que o elemento está visível
+      element.classList.add('typing'); // Adiciona a classe para mostrar o cursor piscando
+
+      const typingInterval = setInterval(() => {
+        if (i < text.length) {
+          element.innerHTML += text.charAt(i);
+          i++;
+        } else {
+          clearInterval(typingInterval);
+          element.classList.remove('typing'); // Para a animação de piscar
+          element.classList.add('typing-done'); // Inicia a animação de fade-out
+        }
+      }, speed);
+    }
+
+    function startCountdown() {
+      const countdownElement = document.getElementById('countdown');
+      const titleElement = document.querySelector('h1');
+      const labelsElement = document.getElementById('countdown-labels');
+
+      // --- LÓGICA DE CONTAGEM PERSISTENTE E SINCRONIZADA ---
+
+      // 1. Tenta pegar a data final do armazenamento local do navegador.
+      let launchTime = localStorage.getItem('countdownEndTime');
+      const now = new Date().getTime();
+
+      // 2. Se não houver uma data guardada, ou se ela já passou,
+      //    cria uma nova data final: 59 minutos a partir de agora.
+      if (!launchTime || launchTime < now) {
+        launchTime = now + 59 * 60 * 1000; // 59 minutos em milissegundos
+        localStorage.setItem('countdownEndTime', launchTime);
+      }
+      // Garante que o valor é um número para os cálculos.
+      launchTime = Number(launchTime);
+
+      countdownInterval = setInterval(() => {
+        const currentTime = new Date().getTime();
+        const distance = launchTime - currentTime;
+
+        // O que acontece quando o tempo acaba
+        if (distance < 0) {
+          triggerEndScreen();
+          return;
+        }
+
+        const minutes = String(Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
+        const seconds = String(Math.floor((distance % (1000 * 60)) / 1000)).padStart(2, '0');
+
+        countdownElement.innerHTML = `${minutes} : ${seconds}`;
+      }, 1000);
+    }
+
+    function setupEarlyAccess() {
+      const earlyAccessButton = document.getElementById('earlyAccessButton');
+      const promptOverlay = document.getElementById('promptOverlay');
+      const promptContainer = document.getElementById('promptContainer');
+      const codeInput = document.getElementById('codeInput');
+      const codeSubmit = document.getElementById('codeSubmit');
+      const closePrompt = document.getElementById('closePrompt');
+      const errorMessage = document.getElementById('errorMessagePrompt');
+      const correctCode = 'dollu4589';
+
+      const closePromptFunc = () => {
+        promptOverlay.classList.add('hidden');
+      };
+
+      // Ação para ABRIR a caixa de código ao clicar no botão
+      earlyAccessButton.addEventListener('click', () => {
+        promptOverlay.classList.remove('hidden');
+        codeInput.value = '';
+        errorMessage.textContent = '';
+        codeInput.classList.remove('error');
+        codeInput.focus();
+      });
+
+      closePrompt.addEventListener('click', closePromptFunc);
+
+      // Fecha a caixa ao clicar no fundo escuro
+      promptOverlay.addEventListener('click', (e) => {
+        if (e.target === promptOverlay) {
+          closePromptFunc();
+        }
+      });
+
+      codeSubmit.addEventListener('click', () => {
+        if (codeInput.value.trim().toLowerCase() === correctCode) {
+          // Zera o tempo e mostra a tela final
+          triggerEndScreen();
+        } else {
+          errorMessage.textContent = 'Código incorreto!';
+          codeInput.classList.add('error');
+          setTimeout(() => codeInput.classList.remove('error'), 500); // Remove a animação para poder ser reativada
+        }
+      });
+    }
+
+    function setupEndScreen() {
+      postCountdownButton.addEventListener('click', () => {
+        postCountdownButton.classList.add('hidden');
+
+        const body = document.body;
+        body.style.backgroundColor = ''; // Limpa o estilo inline
+        body.classList.add('rgb-background');
+
+        const fullText = "PROXIMOS MINIGAMES EM BREVE :)";
+        // Configura o texto para o efeito glitch
+        finalMessage.setAttribute('data-text', fullText);
+        finalMessage.textContent = fullText;
+        finalMessage.classList.remove('hidden');
+        finalMessage.classList.add('glitch');
+
+        // Após um tempo, remove o glitch e inicia o efeito de digitação
+        setTimeout(() => {
+          finalMessage.classList.remove('glitch');
+          typeWriter(finalMessage, fullText, 150);
+        }, 1500); // Duração do efeito glitch em milissegundos
+      }, { once: true });
+    }
+
+    window.onload = () => {
+      startCountdown();
+      setupEarlyAccess();
+      setupEndScreen();
+    };
+  </script>
+
+</body>
+</html>
